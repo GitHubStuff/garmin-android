@@ -1,0 +1,156 @@
+<h1>Logging Data to Garmin Devices</h1>
+<h2>Data Logging</h2>
+<p>Some devices support logging health metrics to files on the Garmin device. These files can be downloaded and parsed by the SDK and the results returned to your application.</p>
+<p>Check the support for data logging.</p>
+<pre><code>SupportStatus dataLoggingSupportStatus();
+</code></pre>
+<h2>Starting and Stopping Logging</h2>
+<p>When a device does support logging, calls to the <code>DeviceManager</code> can be used to check logging states and turn on logging.</p>
+<p>The determine if logging is currently on for a specific type:</p>
+<pre><code>try
+{
+    Futures.getChecked(DeviceManager.getDeviceManager().getLoggingState(device.address(), source, loggingStatus -&gt;
+    {
+        if(loggingStatus != null &amp;&amp; loggingStatus.getState() == State.LOGGING_ON)
+        {
+            ret.put(source, Float.valueOf(loggingStatus.getInterval()));
+        }
+        else
+        {
+            ret.put(source, 0.0f);
+        }
+    }), Exception.class);
+}
+catch(Exception ignored) {}
+</code></pre>
+<p>To turn on or off logging for a given <code>DataSource</code> and with a boolean &lsquo;loggingState&rsquo; and optional &lsquo;samplingInterval&rsquo;.</p>
+<pre><code>try
+{
+    Futures.getChecked(manager.setLoggingStateWithInterval(device.address(), source, loggingState, samplingInterval, loggingStatus -&gt;
+    {
+        if(loggingStatus != null &amp;&amp; loggingStatus.getState() != State.LOGGING_ON &amp;&amp; loggingStatus.getState() != State.LOGGING_OFF)
+        {
+            // HANDLE SDK LOGGING EXCEPTIONS
+        }
+    }), Exception.class);
+}
+catch (Exception e)
+{
+    // HANDLE COMMUNICATION EXCEPTION
+}
+</code></pre>
+<h2>Downloading Logged Data</h2>
+<p>Connected devices will continue to store logged data until either the data is synced with the mobile device, or the device runs out of storage space. If storage space is exhausted, the oldest data currently on the tracker will be deleted first.</p>
+<pre><code>Device device;
+
+device.downloadLoggedData(new LoggingSyncListener()
+{
+    @Override
+    public void onSyncStarted(Device device)
+    {
+        // Called when a logging sync starts.
+    }
+
+    @Override
+    public void onSyncComplete(Device device)
+    {
+        // Called when a logging sync successfully completes.
+    }
+
+    @Override
+    public void onSyncFailed(Device device, Exception e)
+    {
+        // Called when the logging sync fails.  Providing a reason.
+    }
+});
+</code></pre>
+<p>To download logged data if it is available:</p>
+<pre><code>Device device;
+
+DeviceManager.getDeviceManager().hasLoggedData(device.address(), mStartTime, mEndTime, (hasData) -&gt;
+{
+    if(hasData)
+    {
+        DeviceManager.getDeviceManager().getLoggedDataForDevice(device.address(), mStartTime, mEndTime, (loggingResult) -&gt;
+        {
+            // Utilize the logging result containing logged data.
+        }
+    }
+    else
+    {
+        // Device has no data in SDK databases.
+    }
+});
+</code></pre>
+<h2>Logging Parameters</h2>
+<p>Different logging datatypes can accept different configuration parameters. Each type will provide a default parameter through the <code>DataSource#defaultInterval</code> property. Detailed settings info for each type:</p>
+<table>
+  <thead>
+    <tr>
+      <th>DataSource </th>
+      <th>Default Interval </th>
+      <th>Min Interval </th>
+      <th>Max Interval </th>
+      <th>Notes </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>HeartRateVariability </td>
+      <td>NA </td>
+      <td>NA </td>
+      <td>NA </td>
+      <td>Also identified as BBI or IBI. HRV does not require a processing interval, all IBI values are recorded by default. </td>
+    </tr>
+    <tr>
+      <td>ZeroCrossing </td>
+      <td>30s </td>
+      <td>30s </td>
+      <td>3600s </td>
+      <td>Processed, raw accelerometer data. All intervals must be multiples of 30 seconds. </td>
+    </tr>
+    <tr>
+      <td>Steps </td>
+      <td>60s </td>
+      <td>60s </td>
+      <td>60s </td>
+      <td>Processing interval locked at one minute </td>
+    </tr>
+    <tr>
+      <td>Stress </td>
+      <td>10s </td>
+      <td>1s </td>
+      <td>3600s </td>
+      <td>Intervals lower than 10 seconds may not update between recordings, behavior is device dependent. </td>
+    </tr>
+    <tr>
+      <td>HeartRate </td>
+      <td>30s </td>
+      <td>1s </td>
+      <td>3600s </td>
+      <td>Heart rate values are individual readings, not averages over long intervals. ` </td>
+    </tr>
+    <tr>
+      <td>PulseOx </td>
+      <td>30s </td>
+      <td>1s </td>
+      <td>3600s </td>
+      <td>Also identified as SPO2 </td>
+    </tr>
+    <tr>
+      <td>Respiration </td>
+      <td>10s </td>
+      <td>1s </td>
+      <td>3600s </td>
+      <td>Intervals lower than 10 seconds may not update between recordings, behavior is device dependent. </td>
+    </tr>
+    <tr>
+      <td>Raw Accelerometer </td>
+      <td>NA </td>
+      <td>NA </td>
+      <td>NA </td>
+      <td>Raw Accelerometer data at 25hz. Sampling rate not configurable. Data rate is very high, requires high sync frequency and adversely affect battery life </td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>

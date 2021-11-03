@@ -1,0 +1,309 @@
+<h1>Getting Started</h1>
+<h2>Adding the Health SDK to an Android Studio Project</h2>
+<p>The Health SDK is distributed as an aar file. To add it to your project, copy <code>garmin-health-sdk.aar</code> to a directory named &lsquo;libs&rsquo; and add the following to your build.gradle</p>
+<pre><code>android {
+    ...
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+repositories {
+    ...
+
+    flatDir {
+        dirs &#39;libs&#39;
+    }
+}
+
+dependencies {
+    ...
+
+    compile(name:&#39;garmin-health-sdk&#39;, ext:&#39;aar&#39;)
+
+    coreLibraryDesugaring &#39;com.android.tools:desugar_jdk_libs:1.1.5&#39;
+}
+</code></pre>
+<h2>Required Manifest Placeholders</h2>
+<p>The Garmin Health SDK can be initialized as a static library or as a service on its own process. The following configuration can be used to enable to SDK Service from your application AndroidManifest.xml. Running the SDK as a service requires a few additional configurations, for more information see the &lsquo;ServiceConfiguration.html&rsquo; documentation file.</p>
+<pre><code class="xml">    &lt;application&gt;
+       &lt;service android:name=&quot;com.garmin.health.GarminHealthService&quot;
+                android:enabled=&quot;&lt;TRUE TO SUPPORT PUSH NOTIFICATIONS ELSE FALSE&gt;&quot;
+                android:process=&quot;:&lt;YOUR PROCESS NAME HERE&gt;&quot;
+                tools:replace=&quot;android:enabled,android:process&quot;/&gt;
+       &lt;service android:name=&quot;com.garmin.android.gncs.GNCSListenerService&quot;
+                android:enabled=&quot;true&quot;
+                android:process=&quot;:&lt;YOUR PROCESS NAME HERE&gt;&quot;
+                tools:replace=&quot;android:process&quot;/&gt;
+    &lt;/application&gt;
+</code></pre>
+<h3>Dependencies</h3>
+<p>These repositories are necessary to provide required dependencies.</p>
+<pre><code>buildscript {
+    repositories {
+            google()
+            jcenter()
+            maven {
+                url &quot;https://s3.amazonaws.com/repo.commonsware.com&quot;
+            }
+        }
+}
+</code></pre>
+<p>The Standard Health SDK has dependencies on the following third-party libraries that will need to be included in you project.</p>
+<ul>
+  <li><a href="https://github.com/google/guava">Google Guava</a></li>
+  <li><a href="https://github.com/google/gson">Google Gson</a></li>
+  <li><a href="https://developers.google.com/protocol-buffers">Google Protocol Buffers</a></li>
+  <li><a href="http://square.github.io/retrofit/">Square Retrofit</a></li>
+  <li><a href="http://square.github.io/retrofit/">Retrofit Gson Converter</a></li>
+  <li><a href="http://square.github.io/okhttp/">OkHttp3</a></li>
+  <li><a href="http://www.joda.org/joda-time/">Joda Time</a></li>
+  <li><a href="https://developer.android.com/topic/libraries/architecture/room.html">Room</a></li>
+  <li><a href="https://github.com/qos-ch/slf4j">SLF4J</a></li>
+  <li><a href="https://github.com/tony19/logback-android">Logback Android</a></li>
+  <li><a href="https://github.com/sqlcipher/sqlcipher">SQL Cipher CE</a></li>
+</ul>
+<p>All other libraries are Android and Kotlin standard libraries under permissive licenses.</p>
+<p>build.gradle</p>
+<pre><code>dependencies {
+
+    implementation &quot;com.google.code.gson:gson:2.8.6&quot;
+    implementation &quot;com.google.guava:guava:28.0-android&quot;
+    implementation &quot;com.google.protobuf:protobuf-javalite:3.10.0&quot;
+
+    implementation &quot;org.jetbrains.kotlin:kotlin-stdlib:1.4.31&quot;
+    implementation &quot;org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.4.31&quot;
+    implementation &quot;org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9&quot;
+    implementation &quot;org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.9&quot;
+    implementation &quot;org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.3.9&quot;
+
+    implementation &quot;androidx.localbroadcastmanager:localbroadcastmanager:1.0.0&quot;
+    implementation &quot;androidx.core:core:1.3.2&quot;
+    implementation &quot;androidx.work:work-runtime:2.5.0&quot;
+
+    implementation &quot;io.reactivex.rxjava2:rxjava:2.1.7&quot;
+    implementation &quot;io.reactivex.rxjava2:rxandroid:2.1.1&quot;
+
+    implementation &quot;net.danlew:android.joda:2.9.9.2&quot;
+    implementation &quot;com.jcraft:jzlib:1.1.3&quot;
+    implementation &quot;org.slf4j:slf4j-api:1.7.25&quot;
+    implementation &quot;com.github.tony19:logback-android:1.1.1-12&quot;
+    implementation &quot;net.zetetic:android-database-sqlcipher:4.3.0&quot;
+
+    implementation &quot;com.squareup.retrofit2:retrofit:2.4.0&quot;
+    implementation &quot;com.squareup.retrofit2:converter-gson:2.4.0&quot;
+    implementation &quot;com.squareup.okhttp3:logging-interceptor:3.9.0&quot;
+    implementation &quot;com.jakewharton.retrofit:retrofit2-rxjava2-adapter:1.0.0&quot;
+
+    implementation &quot;androidx.room:room-runtime:2.3.0&quot;
+    implementation &quot;androidx.room:room-guava:2.3.0&quot;
+}
+</code></pre>
+<p>The Companion SDK utilizes a smaller subset of these dependencies</p>
+<ul>
+  <li><a href="https://github.com/google/guava">Google Guava</a></li>
+  <li><a href="https://github.com/google/gson">Google Gson</a></li>
+  <li><a href="https://developers.google.com/protocol-buffers">Google Protocol Buffers</a></li>
+  <li><a href="http://www.joda.org/joda-time/">Joda Time</a></li>
+  <li><a href="https://developer.android.com/topic/libraries/architecture/room.html">Room</a></li>
+  <li><a href="https://github.com/qos-ch/slf4j">SLF4J</a></li>
+  <li><a href="https://github.com/tony19/logback-android">Logback Android</a></li>
+  <li><a href="https://github.com/sqlcipher/sqlcipher">SQL Cipher CE</a></li>
+</ul>
+<p>All other libraries are Android and Kotlin standard libraries under permissive licenses.</p>
+<p>All other libraries are Android and Kotlin standard libraries.</p>
+<p>build.gradle</p>
+<pre><code>dependencies {
+
+    implementation &quot;com.google.code.gson:gson:2.8.6&quot;
+    implementation &quot;com.google.guava:guava:28.0-android&quot;
+    implementation &quot;com.google.protobuf:protobuf-javalite:3.10.0&quot;
+
+    implementation &quot;org.jetbrains.kotlin:kotlin-stdlib:1.4.31&quot;
+    implementation &quot;org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.4.31&quot;
+    implementation &quot;org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9&quot;
+    implementation &quot;org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.9&quot;
+    implementation &quot;org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.3.9&quot;
+
+    implementation &quot;androidx.localbroadcastmanager:localbroadcastmanager:1.0.0&quot;
+    implementation &quot;androidx.core:core:1.3.2&quot;
+    implementation &quot;androidx.work:work-runtime:2.5.0&quot;
+
+    implementation &quot;io.reactivex.rxjava2:rxjava:2.1.7&quot;
+    implementation &quot;io.reactivex.rxjava2:rxandroid:2.1.1&quot;
+
+    implementation &quot;net.danlew:android.joda:2.9.9.2&quot;
+    implementation &quot;com.jcraft:jzlib:1.1.3&quot;
+    implementation &quot;org.slf4j:slf4j-api:1.7.25&quot;
+    implementation &quot;com.github.tony19:logback-android:1.1.1-12&quot;
+    implementation &quot;net.zetetic:android-database-sqlcipher:4.3.0&quot;
+
+    implementation &quot;androidx.room:room-runtime:2.3.0&quot;
+    implementation &quot;androidx.room:room-guava:2.3.0&quot;
+}
+</code></pre>
+<h3>Manifest Declarations</h3>
+<p>The following system permissions are required for all variants of the SDK:</p>
+<p>AndroidManifest.xml</p>
+<pre><code>    &lt;uses-permission android:name=&quot;android.permission.BLUETOOTH&quot; /&gt;
+    &lt;uses-permission android:name=&quot;android.permission.BLUETOOTH_ADMIN&quot; /&gt;
+
+    &lt;!-- Coarse Location for API lt 29 (Android 9 and lower) --&gt;
+    &lt;uses-permission android:name=&quot;android.permission.ACCESS_COARSE_LOCATION&quot; /&gt;
+
+    &lt;!-- Fine Location for API gtet 29 (Android 10 and higher) --&gt;
+    &lt;uses-permission android:name=&quot;android.permission.ACCESS_FINE_LOCATION&quot; /&gt;
+    &lt;uses-permission android:name=&quot;android.permission.ACCESS_BACKGROUND_LOCATION&quot; /&gt;
+
+    &lt;uses-permission android:name=&quot;android.permission.ACCESS_NETWORK_STATE&quot; /&gt;
+    &lt;uses-permission android:name=&quot;android.permission.INTERNET&quot; /&gt;
+
+    &lt;!-- Required to access notification protocols and to check for other Garmin app on the mobile device --&gt;
+    &lt;uses-permission android:name=&quot;android.permission.QUERY_ALL_PACKAGES&quot; /&gt;
+</code></pre>
+<p>To enable push notifications on compatible Garmin Devices the following notifications can be requested. These are not required for normal SDK and Notification capability. For more information about enabling and managing device notifications, please see the document <code>DeviceCommunication.html</code>.</p>
+<pre><code>    &lt;uses-permission android:name=&quot;android.permission.WAKE_LOCK&quot;/&gt;
+    &lt;uses-permission android:name=&quot;android.permission.READ_PHONE_STATE&quot;/&gt;
+    &lt;uses-permission android:name=&quot;android.permission.READ_CONTACTS&quot;/&gt;
+    
+    &lt;!-- Permission needed for Android Oreo call handling --&gt;
+    &lt;uses-permission android:name=&quot;android.permission.ANSWER_PHONE_CALLS&quot;/&gt;
+    
+    &lt;!-- Permission needed to reject incoming phone calls --&gt;
+    &lt;uses-permission android:name=&quot;android.permission.CALL_PHONE&quot;/&gt;
+    
+    &lt;!-- Media Control Permission for Advanced Music Controls --&gt;
+    &lt;uses-permission android:name=&quot;android.Manifest.permission.MEDIA_CONTENT_CONTROL&quot;/&gt;
+</code></pre>
+<p>IMPORTANT: The following permission declarations are required to enable normal SDK functionality. The permission created by this call will be addressed to the partner application using the application id defined in the <code>build.gradle</code> file.</p>
+<pre><code>    &lt;!-- SDK Required Permission --&gt;
+    &lt;uses-permission android:name=&quot;${applicationId}.permission.RECEIVE_BROADCASTS&quot; /&gt;
+
+    &lt;!-- Foreground Permission required for newer Android SDKs --&gt;
+    &lt;uses-permission android:name=&quot;android.permission.FOREGROUND_SERVICE&quot;/&gt;
+    
+    &lt;permission
+          android:name=&quot;${applicationId}.permission.RECEIVE_BROADCASTS&quot;
+          android:protectionLevel=&quot;normal&quot; /&gt;
+       
+       
+    &lt;!-- The following meta-data tags should appear inside the application tag alongside typical configuration. --&gt;
+    &lt;application&gt;
+        ...
+    
+        &lt;meta-data
+                android:name=&quot;com.garmin.android.gncs.permission&quot;
+                android:value=&quot;${applicationId}.permission.RECEIVE_BROADCASTS&quot;/&gt;
+        &lt;meta-data
+                android:name=&quot;com.garmin.health.foreground_notification_icon&quot;
+                android:resource=&quot;@drawable/&lt;YOUR LOGO DRAWABLE RESOURCE&gt;&quot;/&gt;
+        &lt;meta-data
+                android:name=&quot;com.garmin.health.use_notification_service&quot;
+                android:value=&quot;&lt;TRUE TO SUPPORT PUSH NOTIFICATIONS ELSE FALSE&gt;&gt;&quot;/&gt;
+     &lt;/application&gt;
+</code></pre>
+<h3>Using the Health SDK</h3>
+<p>You need to initialize the Health SDK before you can use it. Add a call to <code>GarminHealth.initialize()</code> in the <code>onCreate()</code> method of your <code>Application</code> class.</p>
+<p>Logcat and File logging from the SDK can also be configured prior to SDK initialization here. By default, only a small subset of logs will be provided in release builds, but a much more expansive list is included in debug builds. In either type of build the logging level can be overridden.</p>
+<pre><code>    import com.garmin.health.GarminHealth;
+    
+    public class MyApplication extends Application
+    {
+        private static final String LICENSE = &quot;***&quot;;
+        private boolean mAreLogsRequired;
+    
+        @Override
+        public void onCreate()
+        {
+            super.onCreate();
+            
+            // Initialize the SDK.
+            
+            try
+            {
+                GarminHealth.setLoggingLevel(mAreLogsRequired ? LoggingLevel.VERBOSE : LoggingLevel.QUIET);
+
+                GarminHealth.initialize(this, LICENSE);
+            }
+            catch(GarminHealthInitializationException e)
+            {
+                // Be sure to handle the exception. There are a number of things
+                // that can go wrong in initialization.
+            }
+        }
+    }
+</code></pre>
+<p>After the Health SDK has been initialized for the first time, it will not need to be initialized again within the same application lifecycle. If the SDK is implemented as a foreground or scheduled service, then only a call to <code>GarminHealth#stop()</code> is required, otherwise if the SDK is initialized as part of the application space, then call should be registered on the activity lifecycle. If this is the case, then to ensure that SDK resources are appropriately de-initialized on application closing, it is important to implement the following functionality in the base activity class for your application, or at very least in every activity that requires the Garmin Health SDK to function:</p>
+<pre><code>    public abstract class BaseActivityClass extends AppCompatActivity
+    {
+        ...
+    
+        @Override
+        protected void onStop()
+        {
+            if(GarminHealth.isInitialized())
+            {
+                // Stop the Health SDK to pause or close resource currently running in the application space.
+                GarminHealth.stop();
+            }
+            
+            ...
+    
+            super.onStop();
+        }
+    
+        @Override
+        protected void onStart()
+        {
+            if(GarminHealth.isInitialized())
+            {
+                // Restart the Health SDK in the current application space.
+                GarminHealth.restart();
+            }
+            
+            ...
+    
+            super.onStop();
+        }
+    }
+</code></pre>
+<p>Additionally, to ensure that your application does not destroy SDK resource when activities rotate, implement the following functionality in the AndroidManifest for each activity that requires SDK functionality.</p>
+<p>AndroidManifest.xml</p>
+<pre><code>    &lt;!-- This configuration ensures that the Health SDK Resources are not destroyed when a application activity is rotated. --&gt;
+    &lt;activity android:name=&quot;com.garmin.garminhealth.MainActivity&quot; android:configChanges=&quot;orientation|screenSize|keyboardHidden&quot;&gt;
+</code></pre>
+<h2>Additional Information</h2>
+<p>If you don&rsquo;t have a license, please contact Garmin to discuss licensing details.</p>
+<h3>Proguard Configuration</h3>
+<p>The following rules are required to use Proguard/R8 obfuscation on the Garmin Health SDK. A number of the libraries required as dependencies for the SDK also have proguard configuration requirements. The complete recommended configuration is located in the SDK Sample App</p>
+<p>garmin-health-proguard-rules.pro</p>
+<pre><code>-dontshrink
+
+#### SDK Specific Proguard Rules ###################################################################
+
+-keep @interface com.garmin.android.util.ProguardIgnore
+-keep @com.garmin.android.util.ProguardIgnore class * { *; }
+
+-keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
+
+#Called via reflection
+-keep class com.garmin.health.GarminHealthInitializer {
+    private &lt;init&gt;(android.content.Context, java.lang.String);
+}
+
+-keepclassmembers class * extends java.lang.Enum {
+    &lt;fields&gt;;
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+#### Garmin Internal FIT SDK References ############################################################
+
+-dontwarn com.garmin.fit.csv.**
+-dontwarn java.lang.invoke.**
+-dontwarn com.google.common.**
+</code></pre>

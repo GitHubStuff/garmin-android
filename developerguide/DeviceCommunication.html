@@ -1,0 +1,197 @@
+<h1>Device Communication</h1>
+<p>Garmin devices communicate with the phone using Bluetooth Low Energy (BLE). The Health SDK takes care of managing the BLE connections once the device is paired. </p>
+<h2>BLE Communication Modes</h2>
+<p>The Health SDK supports two methods for securing the communication with a watch.<br/>1. Bonding: provided by the BLE specification<br/>2. Garmin Authentication: custom authentication scheme </p>
+<p>The Health SDK contains logic to determine which form of bonding is most appropriate for a particular Android / Garmin device combinations. This process is automatic, device bonding in Android Bluetooth settings is <em>not</em> required or recommended. </p>
+<h2>Finding Garmin Devices</h2>
+<p>The first step in communication is finding a device to communicate with. Extending the <code>GarminDeviceScanner</code> class provides callbacks on scanned Garmin devices.</p>
+<ul>
+  <li>As of Android 6.0 (Marshmallow), scanning for BLE devices requires that your app has either the <a href="https://developer.android.com/reference/android/Manifest.permission.html#ACCESS_COARSE_LOCATION"><code>ACCESS_COURSE_LOCATION</code></a> or <a href="https://developer.android.com/reference/android/Manifest.permission.html#ACCESS_FINE_LOCATION"><code>ACCESS_FINE_LOCATION</code></a> permission.</li>
+  <li>As of Android 10, scanning for BLE devices now requires that your app declare <a href="https://developer.android.com/reference/android/Manifest.permission.html#ACCESS_FINE_LOCATION"><code>ACCESS_FINE_LOCATION</code></a> permission. Be sure to properly handle background location requests as part of your app development.</li>
+</ul>
+<pre><code>import android.Manifest;
+...
+
+private static final int REQUEST_COARSE_LOCATION = 1;
+
+private boolean checkLocationPermission()
+{
+    // The location permissions for BLE scanning are only enforced on version
+    // M and above.
+    if(Build.VERSION.SDK_INT &lt; Build.VERSION_CODES.M)
+    {
+        return true;
+    }
+    
+    if(checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+        == PackageManager.PERMISSION_GRANTED)
+    {
+        return true;
+    }
+    
+    requestPermissions(new String[] {Manifest.permission.ACCESS_COARSE_LOCATION},
+        REQUEST_COARSE_LOCATION);
+        
+    return false;
+}
+
+public void onRequestPermissionsResult(int requestCode, String[] permissions, 
+    int[] grantResults) 
+{
+    
+    switch (requestCode)
+    {
+        case REQUEST_COARSE_LOCATION:
+            if (grantResults.length &gt; 0 
+                &amp;&amp; grantResults[0] == PackageManager.PERMISSION_GRANTED) 
+            {
+                // Permission was granted, start the scan.        
+            }
+            
+            break;
+    }
+}
+</code></pre>
+<p>Once you hold the Location permission, you need to verify that Location services are enabled before starting the scan.</p>
+<pre><code>private boolean checkLocationServices() 
+{        
+    LocationManager lm = 
+        (LocationManager)getActivity().getSystemService(Context.LOCATION_SERVICE);
+    
+    return lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+}
+</code></pre>
+<p>With the prerequisites taken care of, we can start the scan.</p>
+<pre><code>import com.garmin.health.GarminDeviceScanner;
+
+private GarminDeviceScanner scanner = new GarminDeviceScanner()
+{
+    @Override
+    public void onBatchScannedDevices(List&lt;ScannedDevice&gt; devices) {}
+
+    @Override
+    public void onScannedDevice(ScannedDevice device)
+    {
+        // Handle scanned device.
+    }
+
+    @Override
+    public void onScanFailed(Integer errorCode)
+    {
+        // Log failure states.
+    }
+};
+
+private void scan()
+{    
+    scanner.startScan(context);
+}
+</code></pre>
+<p>In the case that a Garmin device is already bonded to an Android device and paired to a Garmin App, BLE discovery will no longer be active. In these cases, if the device is paired with GCM, the SDK will still provide it in scanner callbacks by communicating with GCM directly.</p>
+<h2>Pairing a Device</h2>
+<p>Once you have found a device to communicate with, the next step is to pair the device. Once paired, the SDK will take care of reconnecting every time the SDK is subsequently initialized.</p>
+<p>Pairing is done using the <code>DeviceManager</code> which is accessible as a singleton once the SDK is initialized.</p>
+<pre><code>import com.garmin.health.DeviceManager;
+import com.garmin.health.settings.UserSettings; 
+
+private UserSettings mUserSettings;
+
+private void pair(ScannedDevice scanned)
+{    
+    final DeviceManager devMgr = DeviceManager.getDeviceManager();
+    
+    devMgr.pair(scanned, new PairingCallback() 
+    {
+        void pairingSucceeded(Device device)
+        {
+            // Called when a pair is completed successfully.
+        }
+        
+        void pairingFailed(PairingFailedException cause)
+        {
+            // Called when a pair fails, providing an exsception that wraps the cause of the
+            // failure.  This cause can be useful in logging or providing feedback to users.
+        }
+        
+        void authRequested(AuthCompletion completion)
+        {
+            // Callback that will accept an auth code from the Garmin device in the event
+            // Garmin authentication is used.
+        }
+        
+        void authFailed(AuthRetryCompletion completion)
+        {
+            // Optional callback that will allow another run at authentication
+            // in the event that auth fails.
+        }
+        
+        void authTimeout()
+        {
+            // Optional callback when authentication times out.  Will be followed by pairingFailed.
+        }
+    }
+}
+</code></pre>
+<h3>Resetting a device</h3>
+<p>Not supported in Companion SDK. During the pairing process, it is possible to reset some devices to a factory state by calling <code>PairingCompletion.requestReset()</code>. Doing so will clear all data and goals, and will reset any settings to their default. This behavior is not made available in the Companion SDK since a device reset will have no effect on the data gathered from real-time biometric streaming. Once the device has reset, it will reconnect and trigger another call to <code>connectionReady()</code>.</p>
+<h3>Complete Pairing</h3>
+<p>Not supported in Companion SDK. The <code>connectionReady()</code> callback gives you the opportunity to do any final device setup before it is synced for the first time. This is when you&rsquo;ll want to set any default settings. Once setup, calling <code>PairingCompletion.complete()</code> will add the device to the collection of SDK managed devices, write the settings, and perform a sync.</p>
+<h2>Device Notifications</h2>
+<p>Some Garmin devices support notifications. Notifications are managed by an external service created by the SDK. No partner manipulation is required to manage notifications. If notifications are supported, then users will be required to enable notification through a system menu that will appear when the first compatible device is paired with the SDK. Depending on the user permissions granted to the partner application (see <code>GettingStarted.html</code> for more information), many notifications will by default be enabled through use of the Health SDK. IMPORTANT NOTE: Notifications will only be pushed to the end-user when the SDK is present and initialized in a foreground service. Implementations that do not provide a foreground service for the Health SDK will not be capable of all-day notifications without Garmin Connect Mobile support. </p>
+<p>The following flow can be used to post generic notifications to paired Garmin devices. These notification will not provide any intent, and are only capable of presenting user messages. More complex notifications can be posted by following standard Android notifications protocols (see: <a href="https://developer.android.com/guide/topics/ui/notifiers/notifications">Android Notifications Documentation</a>).</p>
+<pre><code>import com.garmin.health.NotificationManager;
+import com.garmin.health.DeviceManager;
+import com.garmin.health.notification.NotificationResult;
+
+...
+
+{
+    Device device = ...;
+    NotificationManager manager = ...;
+
+    Futures.addCallback(manager.createNotification(device, &quot;&quot;Notification Title&quot;, &quot;Notification Text&quot;, &quot;Clear&quot;, new FutureCallback&lt;NotificationResult&gt;()
+    {
+        @Override
+        public void onSuccess(@Nullable NotificationResult result)
+        {
+            if(result != null)
+            {
+                new Handler(Looper.getMainLooper()).post(() -&gt;
+                {
+                    // Handle successful notifications.
+                });
+            }
+        }
+
+        @Override
+        public void onFailure(@NonNull Throwable t)
+        {
+            Log.e(TAG, &quot;failed sending notification&quot;, t);
+        }
+    }, Executors.newSingleThreadExecutor());
+}
+</code></pre>
+<p>Later you can dismiss the notification through code if you wish, the user can also do it on the device.</p>
+<pre><code>manager.clearNotification(result.id());
+</code></pre>
+<h2>Launching Connect IQ Application</h2>
+<p>Some devices are capable of launching installed Connect IQ applications remotely. Three methods in the <code>Device</code> interface are utilized for this feature.</p>
+<p>Check the device support for launching connect IQ apps remotely:</p>
+<pre><code>SupportStatus status = connectIqLaunchSupportStatus();
+</code></pre>
+<p>Returns a future wrapping list of Connect IQ apps that are available to be launched remotely:</p>
+<pre><code>Future&lt;List&lt;ConnectIqItem&gt;&gt; launchableApps = getLaunchableConnectIqApps();
+</code></pre>
+<p>Attempt to launch a Connect IQ App remotely:</p>
+<pre><code>boolean success = launchConnectIqApp(ConnectIqItem connectIqItem);
+</code></pre>
+<h2>On-Demand Battery Life</h2>
+<p>Some devices expose battery life queries over bluetooth. The following methods are used to gather data on battery life:</p>
+<p>Check the support for on demand battery percentage.</p>
+<pre><code>SupportStatus batteryPercentageSupportStatus();
+</code></pre>
+<p>Returns battery percentage as an integer or -1 if battery life is not available.</p>
+<pre><code>@IntRange(from = -1, to = 100)
+int Device#batteryPercentage();
+</code></pre>

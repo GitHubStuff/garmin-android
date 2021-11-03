@@ -1,0 +1,76 @@
+<h1>Real Time Streaming</h1>
+<h2>Data</h2>
+<p>Streaming data will be reported from a connected device as it occurs. No data will be reported from the time the device wasn&rsquo;t connected. Even when connected, most data types will not report unless there are changes. For example, a stationary device will not report steps until there is movement.</p>
+<h2>Listening for real time data</h2>
+<p>When a device is connected and supports streaming real time data, all registered <code>RealTimeDataListeners</code> will be notified. <code>RealTimeDataListeners</code> are registered with the <code>RealTimeDataManager</code>. The <code>RealTimeDataListeners</code> are registered per <code>RealTimeDataType</code>.<br/>In order to listen for real time data, a listener must be registered for the types to listen for and the notification must be enabled for the devices to be listened for.</p>
+<p>One listener can be registered for all data types and for all paired devices.</p>
+<pre><code>private RealTimeDataListener mRealTimeDataListener;
+
+private void setupRealTimeListener()
+{
+	RealTimeDataManager manager = DeviceManager.getDeviceManager().getRealTimeDataManager();
+    manager.addRealTimeDataListener(this, EnumSet.allOf(RealTimeDataType.class));
+    for (Device device : DeviceManager.getDeviceManager().getPairedDevices())
+    {
+        manager.enableRealTimeData(device, EnumSet.allOf(RealTimeDataType.class));
+    }
+}
+</code></pre>
+<p>A listener can be registered for only one data type and only one device. The device must be paired in order to enable real time notification for it.</p>
+<pre><code>private RealTimeDataListener mRealTimeStepsListener;
+
+private void setupStepsListener()
+{
+	DeviceManager devMgr = DeviceManager.getDeviceManager();
+	RealTimeDataManager rtMgr = devMgr.getRealTimeDataManager();
+	EnumSet&lt;RealTimeDataType&gt; enumSet = EnumSet.noneOf(RealTimeDataType.class);
+    enumSet.add(RealTimeDataType.STEPS);
+	rtMgr.addRealTimeDataListener(mRealTimeStepsListener, enumSet);
+	rtMgr.enableRealTimeData(device, enumSet);
+}
+</code></pre>
+<h3>When to register listeners</h3>
+<p>The device will not stream data if no <code>RealTimeDataListeners</code> are registered. To ensure data is always being streamed, listener registration can be done on app startup.</p>
+<p>If data is not needed all the time, listeners can be registered when needed and unregistered when done. Rapidly registering and unregistering the last or only <code>RealTimeDataListener</code> for a type is not recommended. Doing so could delay receiving data as device repeatedly starts and stops streaming data.</p>
+<h3>Streaming while the app is in background</h3>
+<p>Connected devices will continue to stream when the app is in background unless the real time notifications are disabled when placing the app in background (onPause() or onStop()).<br/>In order to disable real time notifications for a device and a set of data types, call RealTimeManager.disableRealTime(Device, Set<RealTimeDataType>).</p>
+<pre><code>@Override
+public void onStop()
+{
+    super.onStop();
+
+	RealTimeDataManager rtMgr = devMgr.getRealTimeDataManager();
+
+	EnumSet&lt;RealTimeDataType&gt; enumSet = EnumSet.noneOf(RealTimeDataType.class);
+    enumSet.add(RealTimeDataType.STEPS);
+
+	rtMgr.disableRealTimeData(device, enumSet);
+}
+</code></pre>
+<h2>Handling real time data results</h2>
+<p>Streamed real time data will be reported to <code>RealTimeDataListener.onDataUpdate()</code> as a <code>RealTimeResult</code> object. The <code>RealTimeResult</code> contains real time data for all data types but only one will be populated per call. The <code>RealTimeDataType</code> indicates which is available. </p>
+<pre><code>public void onDataUpdate(Device device, RealTimeDataType dataType, RealTimeResult result) {
+    switch (dataType) {
+		case STEPS:
+			handleSteps(result.getSteps());
+			break;
+		case HEART_RATE_VARIABILITY:
+			handleHeartRateVariability(result.getHeartRateVariability());
+			break;
+		...
+	}
+}
+</code></pre>
+<h2>Real time accelerometer data</h2>
+<p>Accelerometer data coming in real time is available once is enabled from the <code>RealTimeDataManager</code>.<br/> <code>
+ EnumSet&lt;RealTimeDataType&gt; enumSet = EnumSet.noneOf(RealTimeDataType.class);
+ enumSet.add(RealTimeDataType.ACCELEROMETER);
+ mDeviceManager.getRealTimeDataManager().enableRealTimeData(mDevice, enumSet);
+</code></p>
+<p>The sampling frequency for reading accelerometer data should be set for each device for which accelerometer data is needed. The value can be set through the AccelerometerSamplingRate enum to one of the following: 25, 50 or 100.<br/>The sampling frequency should be set like this:</p>
+<p><code>
+ Device device;
+ device.samplingFrequency(FIFTY_HERTZ);
+</code></p>
+<p>The accelerometer response comes in the form of <code>RealTimeAccelerometer</code> which contains a list of three samples and the sampling rate. Three accelerometer samples are sent at a time.<br/>An accelerometer sample is represented by <code>AccelerometerSample</code> object. This object contains the x,y,z coordinates as well as two timestamps. A <code>timestamp13</code> value which is a 13 bit local time, the time when this sample was gathered from the Garmin device (useful for calculating jitter in the streaming data). </p>
+<p>The second timestamp represents the time in milliseconds when the sample was registered by the phone. See <code>System#currentTimeMillis()</code> This timestamp only has second precision owing to the difficulty of syncing device time and phone time. This timestamp should be used to determine the relative local time that the sample was taken. In concert with the 13bit device timestamp it should be possible to place each sample within a second time period and also detect packet loss and sample within a second tolerance.</p>

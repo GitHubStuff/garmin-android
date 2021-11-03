@@ -1,0 +1,10 @@
+com.garmin.health
+com.garmin.health.bluetooth
+com.garmin.health.customlog
+com.garmin.health.database.dtos
+com.garmin.health.firmware
+com.garmin.health.notification
+com.garmin.health.realtime
+com.garmin.health.settings
+com.garmin.health.sync
+com.garmin.internal.util

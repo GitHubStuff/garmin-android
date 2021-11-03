@@ -1,0 +1,103 @@
+<h1>Garmin Health Service Configuration</h1>
+<h2>Build Configuration</h2>
+<p>The Garmin Health SDK can be initialized as a service on its own process. The following configuration can be used to enable to SDK Service from your application AndroidManifest.xml.</p>
+<pre><code class="xml">    &lt;application&gt;
+        &lt;service android:name=&quot;com.garmin.health.GarminHealthService&quot;
+                 android:enabled=&quot;true&quot;
+                 android:process=&quot;:&lt;YOUR PROCESS NAME HERE&gt;&quot;
+                 tools:replace=&quot;android:enabled,android:process&quot;/&gt;
+        &lt;service android:name=&quot;com.garmin.android.gncs.GNCSListenerService&quot;
+                 android:process=&quot;:&lt;YOUR PROCESS NAME HERE&gt;&quot;
+                 tools:replace=&quot;android:process&quot;/&gt;
+    &lt;/application&gt;
+</code></pre>
+<h2>AndroidManifest metadata</h2>
+<p>If build configuration for the Health SDK creates the SDK as a service, there are additional AndroidManifest.xml metadata configurations that can be used to customize the service. The first and most significant is the metadata tag <code>com.garmin.health.use_foreground_service</code>. This value is &lsquo;false&rsquo; by default, if it is set to true, then the SDK will be initialized in a foreground services with a visible notification, in this mode the SDK is always kept alive and can be rebound at any time by your application. If this value is defaulted or set to &lsquo;false&rsquo; then the SDK will be initialized as a bound service. For more information on the difference between bound and foreground services please refer to <a href="https://developer.android.com/guide/components/services">Android Service documentation</a>.</p>
+<pre><code class="xml">    &lt;manifest&gt;
+        &lt;meta-data
+                android:name=&quot;com.garmin.health.use_foreground_service&quot;
+                android:value=&quot;true&quot;/&gt;
+    &lt;/manifest&gt;
+</code></pre>
+<p>If the SDK is run as a foreground service, then a notification will automatically be created in the notification drawer and remain visible as long as the service is started. You can provide configurations for the notification to customize it for your application. These will default to reasonable values if not set.</p>
+<pre><code class="xml">    &lt;manifest&gt;
+        &lt;meta-data
+                android:name=&quot;com.garmin.health.notification_channel_name&quot;
+                android:value=&quot;&lt;YOUR SDK SERVICE NOTIFICATION CHANNEL&gt;&quot;/&gt;
+        &lt;meta-data
+                android:name=&quot;com.garmin.health.notification_channel_description&quot;
+                android:value=&quot;&lt;YOUR SDK SERVICE NOTIFICATION CHANNEL DESCRIPTION&gt;&quot;/&gt;
+        &lt;meta-data
+                android:name=&quot;com.garmin.health.foreground_notification_title&quot;
+                android:value=&quot;&lt;YOUR SDK SERVICE NOTIFICATION TITLE&gt;&quot;/&gt;
+        &lt;meta-data
+                android:name=&quot;com.garmin.health.foreground_notification_icon&quot;
+                android:resource=&quot;@drawable/&lt;YOUR LOGO DRAWABLE RESOURCE&gt;&quot;/&gt;
+    &lt;/manifest&gt;
+</code></pre>
+<p>If you choose to run the Health SDK as a foreground service, it is important to communicate to your end users the purpose and source of the notification visible in the drawer. This notification can be silenced by the end-user, but they will be required to edit Android system settings to disable the notification manually.</p>
+<h2>Initializing the Health Service</h2>
+<p>Initializing the Health SDK as a service does not require additional initialization steps, the process of initializing this variant of the SDK however, is nto synchronous and will require a callback before SDK method will function properly. Until the <code>ListenableFuture</code> returned by the <code>GarminHealth#initialize()</code> method is completed successfully, all attempts to communicate with the Health SDK will fail. </p>
+<pre><code class="java">    public class MainActivity extends AbstractGarminActivity
+    {
+        protected void onStart()
+        {
+            super.onStart();
+            
+            Futures.addCallback(HealthSDKManager.initializeHealthSDK(this), new FutureCallback&lt;Boolean&gt;()
+                {
+                    @Override
+                    public void onSuccess(@Nullable Boolean result)
+                    {
+                        // Start working with the Health SDK...
+                    }
+            
+                    @Override
+                    public void onFailure(@NonNull Throwable t)
+                    {
+                        Toast.makeText(getApplicationContext(), R.string.initialization_failed, Toast.LENGTH_LONG).show();
+                        Log.e(TAG, &quot;Garmin Health initialization failed.&quot;, t);
+            
+                        finishAndRemoveTask();
+                    }
+                }, Executors.newSingleThreadExecutor());
+        }
+    }
+</code></pre>
+<h2>Managing Health Service lifecycle</h2>
+<p>To ensure that the SDK service is unbound properly when your application is done working with it, please add the following logic to the base activity class of all activities that you use to work with the Garmin Health SDK. This logic will ensure that you avoid memory leaks when your application is closed after working with the Health SDK.</p>
+<pre><code class="java">    public class AbstractGarminActivity extends Activity
+    {
+         @Override
+        protected void onStop()
+        {
+            if(GarminHealth.isInitialized())
+            {
+                // Stop the Health SDK to pause or close resource currently running in the application space.
+                GarminHealth.stop();
+            }
+                
+            super.onStop();
+        }
+    
+        @Override
+        protected void onStart()
+        {
+            if(GarminHealth.isInitialized())
+            {
+                // Restart the Health SDK in the current application space.
+                GarminHealth.restart();
+            }
+            
+            super.onStop();
+        }
+    }
+</code></pre>
+<p>If the Health SDK is configured to run as a service, then it may be useful to register a BroadcastReceiver to listen for the actions <code>com.garmin.health.ACTION_SERVICE_PROCESS_DIED</code> and <code>com.garmin.health.ACTION_SERVICE_BINDING_DIED</code>. These broadcast actions are sent when the service itself dies, usually because of a fatal error in the Service process, or when the binding dies. The binding will be considered &ldquo;dead&rdquo; only if it closes unexpectedly due to communication issues. If these broadcasts are triggered regularly, then please review Service process logs to determine if an error is causing the Health SDK process to crash. If either the service binding fails, or the SDK service crashes, then you will be required to call <code>GarminHealth#restart()</code> or <code>GarminHealth#initialize()</code> respectively to reestablish SDK communication. </p>
+<pre><code class="xml">    &lt;receiver android:name=&quot;GarminHealthServiceReceiver&quot; android:exported=&quot;false&quot;&gt;
+        &lt;intent-filter&gt;
+            &lt;action android:name=&quot;com.garmin.health.ACTION_SERVICE_PROCESS_DIED&quot;/&gt;
+            &lt;action android:name=&quot;com.garmin.health.ACTION_SERVICE_BINDING_DIED&quot;/&gt;
+        &lt;/intent-filter&gt;
+    &lt;/receiver&gt;
+</code></pre>
